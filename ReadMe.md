@@ -9,18 +9,18 @@ This project presents a smart wire harness diagnostic system using an Arduino Na
 
 ### Hardware
 
-Arduino Nano
-ACS712 (30amp)
-N-channel MOSFET 
-DS18B20 temperature sensor 
-10kΩ resistors
-10W resistor
-Flyback diode
-Automotive fuse (10A–15A)
-Oled display
-Push buttons
-Buzzer
-Status LEDs
-5V DC power supply
-Test connectors
-Heat sink for MOSFET
+* Arduino Nano
+* ACS712 (30amp)
+* N-channel MOSFET 
+* DS18B20 temperature sensor 
+* 10kΩ resistors
+* 10W resistor
+* Flyback diode
+* Automotive fuse (10A–15A)
+* Oled display
+* Push buttons
+* Buzzer
+* Status LEDs
+* 5V DC power supply
+* Test connectors
+* Heat sink for MOSFET
