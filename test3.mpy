@@ -1,0 +1,49 @@
+from machine import Pin
+from utime import sleep_ms, sleep
+from sys import exit 
+
+outPin = [15,2,4,16,17,5,18,19,23]
+inPin  = [13,12,14,27,26,25,33,32,34]
+
+# create pin objects
+opins = [Pin(i, Pin.OUT) for i in outPin]
+ipins = [Pin(i, Pin.IN, Pin.PULL_DOWN) for i in inPin]
+
+expected = {
+15:33,
+2:27,
+4:14,
+16:32,
+17:26,
+5:12,
+18:34,
+19:25,
+23:13
+}
+
+# initially all outputs LOW
+for p in opins:
+    p.value(0)
+
+while True:
+    for i in range(len(opins)):
+
+        for p in opins:
+            p.value(0)
+
+        opins[i].value(1)
+        sleep_ms(20)
+
+        detected = None
+
+        for j in range(len(ipins)):
+            if ipins[j].value():
+                detected = inPin[j]
+
+        if detected == expected[outPin[i]]:
+            print(outPin[i], "PASS")
+        else:
+            print(outPin[i], "FAIL ->", detected)
+            exit()
+
+        sleep(0.5)

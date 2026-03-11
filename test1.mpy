@@ -1,0 +1,17 @@
+from machine import Pin
+from utime import sleep_ms, sleep
+
+outPin = [15,2,4,16,17,18,19,23]
+
+# create pin objects
+pins = [Pin(i, Pin.OUT) for i in outPin]
+
+# example: turn all pins ON
+for p in pins:
+    p.on()
+
+sleep(1)
+
+# turn all pins OFF
+for p in pins:
+    p.off()
