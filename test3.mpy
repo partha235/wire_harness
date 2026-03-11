@@ -1,11 +1,10 @@
 from machine import Pin
 from utime import sleep_ms, sleep
-from sys import exit 
+from sys import exit
 
 outPin = [15,2,4,16,17,5,18,19,23]
 inPin  = [13,12,14,27,26,25,33,32,34]
 
-# create pin objects
 opins = [Pin(i, Pin.OUT) for i in outPin]
 ipins = [Pin(i, Pin.IN, Pin.PULL_DOWN) for i in inPin]
 
@@ -21,29 +20,39 @@ expected = {
 23:13
 }
 
-# initially all outputs LOW
+# all outputs LOW
 for p in opins:
     p.value(0)
 
-while True:
+
+def pin_check():
+
     for i in range(len(opins)):
 
+        # turn everything OFF
         for p in opins:
             p.value(0)
 
+        # activate one output
         opins[i].value(1)
         sleep_ms(20)
 
-        detected = None
+        detected = []
 
         for j in range(len(ipins)):
             if ipins[j].value():
-                detected = inPin[j]
+                detected.append(inPin[j])
 
-        if detected == expected[outPin[i]]:
+        if detected == [expected[outPin[i]]]:
             print(outPin[i], "PASS")
+
         else:
             print(outPin[i], "FAIL ->", detected)
             exit()
 
-        sleep(0.5)
+
+while True:
+
+    pin_check()
+    print("HARNESS PASS\n")
+    sleep(1)

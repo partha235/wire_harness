@@ -1,5 +1,6 @@
 from machine import Pin
 from utime import sleep_ms, sleep
+from time import ticks_us, ticks_diff
 from sys import exit
 
 outPin = [15,2,4,16,17,5,18,19,23]
@@ -50,9 +51,56 @@ def pin_check():
             print(outPin[i], "FAIL ->", detected)
             exit()
 
+def pulse_test(out_gpio, in_gpio, tolerance_us=50, timeout_us=1000):
 
-while True:
+    out_gpio.value(0)
+    sleep_ms(2)
 
-    pin_check()
-    print("HARNESS PASS\n")
-    sleep(1)
+    t_send = ticks_us()
+    out_gpio.value(1)
+
+    while in_gpio.value() == 0:
+        if ticks_diff(ticks_us(), t_send) > timeout_us:
+            print("TIMING FAIL -> timeout")
+            out_gpio.value(0)
+            return False
+
+    t_recv = ticks_us()
+
+    delay = ticks_diff(t_recv, t_send)
+
+    print("Delay:", delay, "us")
+
+    if delay <= tolerance_us:
+        print("TIMING PASS")
+        result = True
+    else:
+        print("TIMING FAIL")
+        result = False
+
+    out_gpio.value(0)
+    return result
+
+
+def timing_check():
+
+    for i in range(len(opins)):
+
+        out_gpio = opins[i]
+        expected_in = expected[outPin[i]]
+
+        in_index = inPin.index(expected_in)
+        in_gpio = ipins[in_index]
+
+        print("Testing:", outPin[i], "->", expected_in)
+
+        if not pulse_test(out_gpio, in_gpio):
+            print("HARNESS TIMING FAIL")
+            exit()
+
+# while True:
+
+pin_check()
+timing_check()
+
+print("\nHARNESS FULL PASS\n")

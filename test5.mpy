@@ -1,0 +1,91 @@
+from machine import Pin
+from utime import sleep_ms
+from time import ticks_us, ticks_diff
+from sys import exit
+
+# ---------------- PIN DEFINITIONS ----------------
+
+outPin = [15,2,4,16,17,5,18,19,23]
+inPin  = [13,12,14,27,26,25,33,32,34]
+
+opins = [Pin(i, Pin.OUT) for i in outPin]
+ipins = [Pin(i, Pin.IN, Pin.PULL_DOWN) for i in inPin]
+
+expected = {
+    15:33,
+    2:27,
+    4:14,
+    16:32,
+    17:26,
+    5:12,
+    18:34,
+    19:25,
+    23:13
+}
+
+# initialize outputs
+for p in opins:
+    p.value(0)
+
+# ---------------- DELAY TEST ----------------
+
+def delay_test(out_gpio, in_gpio, timeout_us=2000):
+
+    out_gpio.value(0)
+    sleep_ms(2)
+
+    t_start = ticks_us()
+
+    out_gpio.value(1)
+
+    while not in_gpio.value():
+
+        if ticks_diff(ticks_us(), t_start) > timeout_us:
+            print("NO SIGNAL")
+            return False
+
+    t_end = ticks_us()
+
+    delay = ticks_diff(t_end, t_start)
+
+    out_gpio.value(0)
+
+    print("Delay:", delay, "us")
+
+    return delay
+
+# ---------------- SIGNAL TEST ----------------
+
+def signal_integrity_check():
+
+    print("\nSIGNAL PROPAGATION TEST\n")
+
+    for i in range(len(opins)):
+
+        out_gpio = opins[i]
+        expected_in = expected[outPin[i]]
+
+        in_index = inPin.index(expected_in)
+        in_gpio = ipins[in_index]
+
+        print("Testing:", outPin[i], "->", expected_in)
+
+        delay = delay_test(out_gpio, in_gpio)
+
+        if delay is False:
+            print("HARNESS FAIL")
+            exit()
+
+        if delay < 50:
+            print("PASS")
+
+        else:
+            print("HIGH DELAY WARNING")
+
+# ---------------- MAIN ----------------
+
+signal_integrity_check()
+
+print("\n======================")
+print(" HARNESS TEST PASS")
+print("======================\n")
