@@ -1,0 +1,106 @@
+from machine import Pin, I2C
+from utime import sleep_ms
+from time import ticks_us, ticks_diff
+from sys import exit
+import ssd1306
+
+# ---------------- OLED SETUP ----------------
+
+i2c = I2C(0, scl=Pin(22), sda=Pin(21))
+oled = ssd1306.SSD1306_I2C(128, 64, i2c)
+
+def oled_print(line1="", line2="", line3="", line4=""):
+    oled.fill(0)
+    oled.text(line1, 0, 0)
+    oled.text(line2, 0, 16)
+    oled.text(line3, 0, 32)
+    oled.text(line4, 0, 48)
+    oled.show()
+
+# ---------------- PIN DEFINITIONS ----------------
+
+outPin = [15,2,4,16,17,5,18,19,23]
+inPin  = [13,12,14,27,26,25,33,32,34]
+
+opins = [Pin(i, Pin.OUT) for i in outPin]
+ipins = [Pin(i, Pin.IN, Pin.PULL_DOWN) for i in inPin]
+
+expected = {
+    15:33, 2:27, 4:14, 16:32, 17:26,
+    5:12, 18:34, 19:25, 23:13
+}
+
+for p in opins:
+    p.value(0)
+
+# ---------------- DELAY TEST ----------------
+
+def delay_test(out_gpio, in_gpio, timeout_us=2000):
+
+    out_gpio.value(0)
+    sleep_ms(2)
+
+    t_start = ticks_us()
+    out_gpio.value(1)
+
+    while not in_gpio.value():
+        if ticks_diff(ticks_us(), t_start) > timeout_us:
+            print("NO SIGNAL")
+            oled_print("NO SIGNAL", "", "", "")
+            return False
+
+    t_end = ticks_us()
+    delay = ticks_diff(t_end, t_start)
+
+    out_gpio.value(0)
+
+    print("Delay:", delay, "us")
+    oled_print("Delay Test", str(delay) + " us", "", "")
+
+    return delay
+
+# ---------------- SIGNAL TEST ----------------
+
+def signal_integrity_check():
+
+    print("\nSIGNAL PROPAGATION TEST\n")
+    oled_print("Harness Test", "Starting...", "", "")
+    sleep_ms(1000)
+
+    for i in range(len(opins)):
+
+        out_gpio = opins[i]
+        expected_in = expected[outPin[i]]
+
+        in_index = inPin.index(expected_in)
+        in_gpio = ipins[in_index]
+
+        msg = str(outPin[i]) + "->" + str(expected_in)
+        print("Testing:", msg)
+        oled_print("Testing", msg, "", "")
+
+        delay = delay_test(out_gpio, in_gpio)
+
+        if delay is False:
+            print("HARNESS FAIL")
+            oled_print("HARNESS FAIL", "", "", "")
+            exit()
+
+        if delay < 50:
+            print("PASS")
+            oled_print("PASS", msg, str(delay)+" us", "")
+        else:
+            print("HIGH DELAY WARNING")
+            oled_print("WARNING", msg, str(delay)+" us", "")
+
+        sleep_ms(800)
+
+# ---------------- MAIN ----------------
+
+signal_integrity_check()
+
+print("\n======================")
+print(" HARNESS TEST PASS")
+print("======================\n")
+
+oled_print("TEST COMPLETE", "HARNESS PASS", "", "")

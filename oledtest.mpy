@@ -1,0 +1,28 @@
+# from machine import Pin,I2C
+# import ssd1306
+
+# #You can choose any other combination of I2C pins
+# i2c = I2C(0,scl=Pin(1), sda=Pin(0)) # for pi pico 
+
+# oled_width = 128
+# oled_height = 64
+# oled = ssd1306.SSD1306_I2C(oled_width, oled_height, i2c)
+
+# oled.fill(0)                                                                                                        
+# oled.text('Saga', 0, 0,200)
+# oled.show()
+from machine import Pin, I2C
+import time
+
+# Use I2C0 on GP0 (SDA) and GP1 (SCL)
+i2c = I2C(0, scl=Pin(1), sda=Pin(0), freq=400000)
+
+# Scan for devices
+devices = i2c.scan()
+print("I2C devices found:", devices)
+
+# Optional: Confirm if OLED is found
+if len(devices) == 0:
+    print("No I2C devices found.")
+else:
+    print("I2C device address(es):", devices)
