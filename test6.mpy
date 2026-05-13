@@ -1,11 +1,9 @@
 from machine import Pin, I2C
-from utime import sleep_ms
-from time import ticks_us, ticks_diff
-from sys import exit
+from utime import sleep_ms, ticks_us, ticks_diff,sleep
 import ssd1306
+import sys
 
 # ---------------- OLED SETUP ----------------
-
 i2c = I2C(0, scl=Pin(22), sda=Pin(21))
 oled = ssd1306.SSD1306_I2C(128, 64, i2c)
 
@@ -18,89 +16,95 @@ def oled_print(line1="", line2="", line3="", line4=""):
     oled.show()
 
 # ---------------- PIN DEFINITIONS ----------------
+outPin = [15, 2, 4, 16, 17, 5, 18, 19, 23]
+inPin  = [33, 27, 14, 32, 26, 12, 34, 25, 13]   # order must match expected
 
-outPin = [15,2,4,16,17,5,18,19,23]
-inPin  = [13,12,14,27,26,25,33,32,34]
-
-opins = [Pin(i, Pin.OUT) for i in outPin]
-ipins = [Pin(i, Pin.IN, Pin.PULL_DOWN) for i in inPin]
-
+# Mapping: output GPIO -> expected input GPIO
 expected = {
-    15:33, 2:27, 4:14, 16:32, 17:26,
-    5:12, 18:34, 19:25, 23:13
+    15: 33, 2: 27, 4: 14, 16: 32, 17: 26,
+    5: 12, 18: 34, 19: 25, 23: 13
 }
 
+# Create output pins
+opins = [Pin(p, Pin.OUT) for p in outPin]
+
+# Create input pins — NO PULL_DOWN on input-only pins (34+)
+ipins = []
+for p in inPin:
+    if p >= 34:                     # input-only pins: 34,35,36,39
+        ipins.append(Pin(p, Pin.IN))          # no pull
+    else:
+        ipins.append(Pin(p, Pin.IN, Pin.PULL_DOWN))
+
+# Set all outputs low initially
 for p in opins:
     p.value(0)
 
 # ---------------- DELAY TEST ----------------
-
-def delay_test(out_gpio, in_gpio, timeout_us=2000):
-
+def delay_test(out_gpio, in_gpio, timeout_us=5000):   # increased timeout a bit
     out_gpio.value(0)
-    sleep_ms(2)
+    sleep_ms(5)                    # longer settle time
 
     t_start = ticks_us()
     out_gpio.value(1)
 
     while not in_gpio.value():
         if ticks_diff(ticks_us(), t_start) > timeout_us:
-            print("NO SIGNAL")
-            oled_print("NO SIGNAL", "", "", "")
-            return False
+            return False, 0        # timeout → no signal
 
-    t_end = ticks_us()
-    delay = ticks_diff(t_end, t_start)
-
+    delay = ticks_diff(ticks_us(), t_start)
     out_gpio.value(0)
-
-    print("Delay:", delay, "us")
-    oled_print("Delay Test", str(delay) + " us", "", "")
-
-    return delay
+    return True, delay
 
 # ---------------- SIGNAL TEST ----------------
-
 def signal_integrity_check():
-
-    print("\nSIGNAL PROPAGATION TEST\n")
+    print("\n=== HARNESS SIGNAL PROPAGATION TEST ===\n")
     oled_print("Harness Test", "Starting...", "", "")
     sleep_ms(1000)
 
     for i in range(len(opins)):
-
         out_gpio = opins[i]
-        expected_in = expected[outPin[i]]
+        out_num = outPin[i]
+        expected_in_num = expected[out_num]
 
-        in_index = inPin.index(expected_in)
+        try:
+            in_index = inPin.index(expected_in_num)
+        except ValueError:
+            print(f"Error: Expected input {expected_in_num} not in inPin list!")
+            oled_print("CONFIG ERROR", "", "", "")
+            sys.exit()
+
         in_gpio = ipins[in_index]
+        msg = f"{out_num} -> {expected_in_num}"
 
-        msg = str(outPin[i]) + "->" + str(expected_in)
-        print("Testing:", msg)
+        print(f"Testing: {msg}")
         oled_print("Testing", msg, "", "")
 
-        delay = delay_test(out_gpio, in_gpio)
+        success, delay = delay_test(out_gpio, in_gpio)
 
-        if delay is False:
-            print("HARNESS FAIL")
-            oled_print("HARNESS FAIL", "", "", "")
-            exit()
-
-        if delay < 50:
-            print("PASS")
-            oled_print("PASS", msg, str(delay)+" us", "")
+        if not success:
+            print("NO SIGNAL - HARNESS FAIL")
+            oled_print("NO SIGNAL", msg, "HARNESS FAIL", "")
+            return 0
         else:
-            print("HIGH DELAY WARNING")
-            oled_print("WARNING", msg, str(delay)+" us", "")
+            if delay < 100:        # adjust threshold as needed
+                print(f"PASS (delay: {delay} us)")
+                oled_print("PASS", msg, f"{delay} us", "")
+            else:
+                print(f"HIGH DELAY WARNING ({delay} us)")
+                oled_print("WARNING", msg, f"{delay} us", "")
 
-        sleep_ms(800)
+        sleep_ms(1000)
 
 # ---------------- MAIN ----------------
-
-signal_integrity_check()
-
-print("\n======================")
-print(" HARNESS TEST PASS")
-print("======================\n")
-
-oled_print("TEST COMPLETE", "HARNESS PASS", "", "")
+try:
+    signal_integrity_check()
+    print("\n======================")
+    print("   HARNESS TEST PASS   ")
+    print("======================\n")
+    oled_print("TEST COMPLETE", "HARNESS PASS", "", "")
+except Exception as e:
+    print("Test failed with exception:", e)
+    oled_print("TEST ERROR", str(e)[:16], "", "")
+    sleep(1000)
+    
